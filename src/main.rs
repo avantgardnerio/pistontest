@@ -22,10 +22,14 @@ use rand::random;
 
 use graphics::math::Vec2d;
 
+use std::cell::Cell;
+
 const GREEN: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const RED: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const SPEED: f64 = 200.0;
 const STAR_COUNT: usize = 100;
+const WIDTH: f64 = 1024.0;
+const HEIGHT: f64 = 768.0;
 
 pub struct App {
     gl: GlGraphics,
@@ -35,7 +39,8 @@ pub struct App {
     spaceship : Texture,
     beam : Texture,
     keys: HashSet<Key>,
-    stars: [Vec2d; STAR_COUNT]
+    stars: [Vec2d; STAR_COUNT],
+    beams: Vec<Vec2d>
 }
 
 impl App {
@@ -45,18 +50,31 @@ impl App {
         let (x, y) = (&self.x, &self.y);
         let draw_state = &DrawState::default();
         let stars = &self.stars;
+        let beam = &self.beam;
+        let beams = &self.beams;
 
         self.gl.draw(args.viewport(), |c, gl| {
             clear(GREEN, gl);
-            let transform = c.transform.trans(*x, *y).trans(-45.0, -64.0);
-            image.draw(spaceship, draw_state, transform, gl);
             
 		    for i in 0..STAR_COUNT {
 	            let transform = c.transform.trans(stars[i][0], stars[i][1]);
 		        let square = rectangle::square(0.0, 0.0, 1.0);
 		        rectangle(RED, square, transform, gl);
 		    }
+		    
+		    for b in beams {
+	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
+	            image.draw(beam, draw_state, trans, gl);
+		    }
+
+            let transform = c.transform.trans(*x, *y).trans(-45.0, -64.0);
+            image.draw(spaceship, draw_state, transform, gl);
         });
+    }
+    
+    fn fire(&mut self) {
+    	let beam = [self.x, self.y];
+    	self.beams.push(beam);
     }
 
     fn update(&mut self, args: &UpdateArgs) {
@@ -66,10 +84,17 @@ impl App {
     	if self.keys.contains(&Key::Right) {
     		self.x += SPEED * args.dt;
     	}
+
+    	for i in 0..self.beams.len() {
+    		let beam = self.beams.get_mut(i).unwrap();
+    		beam[1] -= SPEED * args.dt;
+    	}
+	    self.beams.retain(|b| b[1] > 0.0);
+
 	    for i in 0..STAR_COUNT {
 	    	self.stars[i][1] += SPEED * args.dt;
-	    	if self.stars[i][1] > 768.0 {
-		    	self.stars[i] = [random::<f64>() * 1024.0, 0.0]; 
+	    	if self.stars[i][1] > HEIGHT {
+		    	self.stars[i] = [random::<f64>() * WIDTH, 0.0]; 
 	    	}
 	    }
     }
@@ -88,21 +113,25 @@ fn main() {
     
     let mut app = App {
 		gl: GlGraphics::new(opengl),
-		x: 1024.0 / 2.0,
-		y: 768.0 - 64.0,
+		x: WIDTH / 2.0,
+		y: HEIGHT - 64.0,
 		image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
 		spaceship: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
 		beam: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
 		keys: HashSet::new(),
-		stars: [[0.0,0.0]; STAR_COUNT]
+		stars: [[0.0,0.0]; STAR_COUNT],
+		beams: Vec::new()
     };
     for i in 0..STAR_COUNT {
-    	app.stars[i] = [random::<f64>() * 1024.0, random::<f64>() *  768.0]; 
+    	app.stars[i] = [random::<f64>() * WIDTH, random::<f64>() *  HEIGHT]; 
     }
 
     let mut events = window.events();
     while let Some(e) = events.next(&mut window) {
         if let Some(Button::Keyboard(key)) = e.press_args() {
+        	if key == Key::Space {
+        		app.fire();
+        	}
         	app.keys.insert(key);
         }
         
