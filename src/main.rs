@@ -38,9 +38,14 @@ pub struct App {
     image : Image,
     spaceship : Texture,
     beam : Texture,
+    lutetia : Texture,
     keys: HashSet<Key>,
     stars: [Vec2d; STAR_COUNT],
-    beams: Vec<Vec2d>
+    beams: Vec<Vec2d>,
+    asteriods: Vec<Vec2d>,
+    asteriod_interval: f64,
+    total_time: f64,
+    last_asteriod: f64
 }
 
 impl App {
@@ -52,6 +57,8 @@ impl App {
         let stars = &self.stars;
         let beam = &self.beam;
         let beams = &self.beams;
+        let lutetia = &self.lutetia;
+        let asteriods = &self.asteriods;
 
         self.gl.draw(args.viewport(), |c, gl| {
             clear(GREEN, gl);
@@ -65,6 +72,11 @@ impl App {
 		    for b in beams {
 	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
 	            image.draw(beam, draw_state, trans, gl);
+		    }
+
+		    for b in asteriods {
+	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
+	            image.draw(lutetia, draw_state, trans, gl);
 		    }
 
             let transform = c.transform.trans(*x, *y).trans(-45.0, -64.0);
@@ -95,6 +107,17 @@ impl App {
 		    	s[1] = 0.0; 
 	    	}
 	    }
+	    
+		for b in self.asteriods.iter_mut() { b[1] += SPEED * args.dt; }
+	    self.asteriods.retain(|b| b[1] < HEIGHT);
+
+	    if self.last_asteriod < self.total_time - self.asteriod_interval {
+	    	self.last_asteriod = self.total_time;
+	    	let asteriod = [random::<f64>() * WIDTH, 0.0];
+	    	self.asteriods.push(asteriod);
+	    }
+
+	    self.total_time += args.dt;
     }
 }
 
@@ -116,9 +139,14 @@ fn main() {
 		image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
 		spaceship: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
 		beam: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
+		lutetia: Texture::from_path(Path::new("assets/lutetia.jpg")).unwrap(),
 		keys: HashSet::new(),
 		stars: [[0.0,0.0]; STAR_COUNT],
-		beams: Vec::new()
+		beams: Vec::new(),
+		asteriods: Vec::new(),
+		asteriod_interval: 3.0,
+		total_time: 0.0,
+		last_asteriod: 0.0
     };
     for s in app.stars.iter_mut() {
     	s[0] = random::<f64>() * WIDTH;
