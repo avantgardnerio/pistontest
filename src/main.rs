@@ -56,8 +56,8 @@ impl App {
         self.gl.draw(args.viewport(), |c, gl| {
             clear(GREEN, gl);
             
-		    for i in 0..STAR_COUNT {
-	            let transform = c.transform.trans(stars[i][0], stars[i][1]);
+		    for s in stars.iter() {
+	            let transform = c.transform.trans(s[0], s[1]);
 		        let square = rectangle::square(0.0, 0.0, 1.0);
 		        rectangle(RED, square, transform, gl);
 		    }
@@ -85,16 +85,14 @@ impl App {
     		self.x += SPEED * args.dt;
     	}
 
-    	for i in 0..self.beams.len() {
-    		let beam = self.beams.get_mut(i).unwrap();
-    		beam[1] -= SPEED * args.dt;
-    	}
+		for b in self.beams.iter_mut() { b[1] -= SPEED * args.dt; }
 	    self.beams.retain(|b| b[1] > 0.0);
 
-	    for i in 0..STAR_COUNT {
-	    	self.stars[i][1] += SPEED * args.dt;
-	    	if self.stars[i][1] > HEIGHT {
-		    	self.stars[i] = [random::<f64>() * WIDTH, 0.0]; 
+	    for s in self.stars.iter_mut() {
+	    	s[1] += SPEED * args.dt;
+	    	if s[1] > HEIGHT {
+		    	s[0] = random::<f64>() * WIDTH;
+		    	s[1] = 0.0; 
 	    	}
 	    }
     }
@@ -122,8 +120,9 @@ fn main() {
 		stars: [[0.0,0.0]; STAR_COUNT],
 		beams: Vec::new()
     };
-    for i in 0..STAR_COUNT {
-    	app.stars[i] = [random::<f64>() * WIDTH, random::<f64>() *  HEIGHT]; 
+    for s in app.stars.iter_mut() {
+    	s[0] = random::<f64>() * WIDTH;
+    	s[1] = random::<f64>() * HEIGHT; 
     }
 
     let mut events = window.events();
