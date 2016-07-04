@@ -18,6 +18,10 @@ use std::collections::HashSet;
 
 use std::path::Path;
 
+use rand::random;
+
+use graphics::math::Vec2d;
+
 const GREEN: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const RED: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const SPEED: f64 = 200.0;
@@ -28,28 +32,27 @@ pub struct App {
     x: f64,
     y: f64,
     image : Image,
-    texture : Texture,
+    spaceship : Texture,
+    beam : Texture,
     keys: HashSet<Key>,
-    starXs: [f64; STAR_COUNT],
-    starYs: [f64; STAR_COUNT]
+    stars: [Vec2d; STAR_COUNT]
 }
 
 impl App {
     fn render(&mut self, args: &RenderArgs) {
-    	let texture = &self.texture;
+    	let spaceship = &self.spaceship;
     	let image = &self.image;
         let (x, y) = (&self.x, &self.y);
         let draw_state = &DrawState::default();
-        let starXs = &self.starXs;
-        let starYs = &self.starYs;
+        let stars = &self.stars;
 
         self.gl.draw(args.viewport(), |c, gl| {
             clear(GREEN, gl);
             let transform = c.transform.trans(*x, *y).trans(-45.0, -64.0);
-            image.draw(texture, draw_state, transform, gl);
+            image.draw(spaceship, draw_state, transform, gl);
             
 		    for i in 0..STAR_COUNT {
-	            let transform = c.transform.trans(starXs[i], starYs[i]);
+	            let transform = c.transform.trans(stars[i][0], stars[i][1]);
 		        let square = rectangle::square(0.0, 0.0, 1.0);
 		        rectangle(RED, square, transform, gl);
 		    }
@@ -64,10 +67,9 @@ impl App {
     		self.x += SPEED * args.dt;
     	}
 	    for i in 0..STAR_COUNT {
-	    	self.starYs[i] += SPEED * args.dt;
-	    	if self.starYs[i] > 768.0 {
-		    	self.starXs[i] = rand::random::<f64>() * 1024.0; 
-	    		self.starYs[i] = 0.0;
+	    	self.stars[i][1] += SPEED * args.dt;
+	    	if self.stars[i][1] > 768.0 {
+		    	self.stars[i] = [random::<f64>() * 1024.0, 0.0]; 
 	    	}
 	    }
     }
@@ -89,14 +91,13 @@ fn main() {
 		x: 1024.0 / 2.0,
 		y: 768.0 - 64.0,
 		image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
-		texture: Texture::from_path(Path::new("src/spaceship.png")).unwrap(),
+		spaceship: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
+		beam: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
 		keys: HashSet::new(),
-		starXs: [0.0; STAR_COUNT],
-		starYs: [0.0; STAR_COUNT]
+		stars: [[0.0,0.0]; STAR_COUNT]
     };
     for i in 0..STAR_COUNT {
-    	app.starXs[i] = rand::random::<f64>() * 1024.0; 
-    	app.starYs[i] = rand::random::<f64>() * 768.0; 
+    	app.stars[i] = [random::<f64>() * 1024.0, random::<f64>() *  768.0]; 
     }
 
     let mut events = window.events();
