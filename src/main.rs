@@ -31,8 +31,7 @@ const STAR_COUNT: usize = 100;
 const WIDTH: f64 = 1024.0;
 const HEIGHT: f64 = 768.0;
 
-pub struct App {
-    gl: GlGraphics,
+pub struct AppState {
     x: f64,
     y: f64,
     image : Image,
@@ -48,59 +47,57 @@ pub struct App {
     last_asteriod: f64
 }
 
+pub struct App {
+    gl: GlGraphics,
+    state: AppState
+}
+
 impl App {
     fn render(&mut self, args: &RenderArgs) {
-    	let spaceship = &self.spaceship;
-    	let image = &self.image;
-        let (x, y) = (&self.x, &self.y);
         let draw_state = &DrawState::default();
-        let stars = &self.stars;
-        let beam = &self.beam;
-        let beams = &self.beams;
-        let lutetia = &self.lutetia;
-        let asteriods = &self.asteriods;
-
+    	let state = &self.state;
         self.gl.draw(args.viewport(), |c, gl| {
             clear(GREEN, gl);
             
-		    for s in stars.iter() {
+		    for s in state.stars.iter() {
 	            let transform = c.transform.trans(s[0], s[1]);
 		        let square = rectangle::square(0.0, 0.0, 1.0);
 		        rectangle(RED, square, transform, gl);
 		    }
 		    
-		    for b in beams {
+		    for b in state.beams.iter() {
 	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
-	            image.draw(beam, draw_state, trans, gl);
+	            state.image.draw(&state.beam, draw_state, trans, gl);
 		    }
 
-		    for b in asteriods {
+		    for b in state.asteriods.iter() {
 	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
-	            image.draw(lutetia, draw_state, trans, gl);
+	            state.image.draw(&state.lutetia, draw_state, trans, gl);
 		    }
 
-            let transform = c.transform.trans(*x, *y).trans(-45.0, -64.0);
-            image.draw(spaceship, draw_state, transform, gl);
+            let transform = c.transform.trans(state.x, state.y).trans(-45.0, -64.0);
+            state.image.draw(&state.spaceship, draw_state, transform, gl);
         });
     }
     
     fn fire(&mut self) {
-    	let beam = [self.x, self.y];
-    	self.beams.push(beam);
+    	let beam = [self.state.x, self.state.y];
+    	self.state.beams.push(beam);
     }
 
     fn update(&mut self, args: &UpdateArgs) {
-    	if self.keys.contains(&Key::Left) {
-    		self.x -= SPEED * args.dt;
+    	let state = &mut self.state;
+    	if state.keys.contains(&Key::Left) {
+    		state.x -= SPEED * args.dt;
     	}
-    	if self.keys.contains(&Key::Right) {
-    		self.x += SPEED * args.dt;
+    	if state.keys.contains(&Key::Right) {
+    		state.x += SPEED * args.dt;
     	}
 
-		for b in self.beams.iter_mut() { b[1] -= SPEED * args.dt; }
-	    self.beams.retain(|b| b[1] > 0.0);
+		for b in state.beams.iter_mut() { b[1] -= SPEED * args.dt; }
+	    state.beams.retain(|b| b[1] > 0.0);
 
-	    for s in self.stars.iter_mut() {
+	    for s in state.stars.iter_mut() {
 	    	s[1] += SPEED * args.dt;
 	    	if s[1] > HEIGHT {
 		    	s[0] = random::<f64>() * WIDTH;
@@ -108,16 +105,16 @@ impl App {
 	    	}
 	    }
 	    
-		for b in self.asteriods.iter_mut() { b[1] += SPEED * args.dt; }
-	    self.asteriods.retain(|b| b[1] < HEIGHT);
+		for b in state.asteriods.iter_mut() { b[1] += SPEED * args.dt; }
+	    state.asteriods.retain(|b| b[1] < HEIGHT);
 
-	    if self.last_asteriod < self.total_time - self.asteriod_interval {
-	    	self.last_asteriod = self.total_time;
+	    if state.last_asteriod < state.total_time - state.asteriod_interval {
+	    	state.last_asteriod = state.total_time;
 	    	let asteriod = [random::<f64>() * WIDTH, 0.0];
-	    	self.asteriods.push(asteriod);
+	    	state.asteriods.push(asteriod);
 	    }
 
-	    self.total_time += args.dt;
+	    state.total_time += args.dt;
     }
 }
 
@@ -134,21 +131,23 @@ fn main() {
     
     let mut app = App {
 		gl: GlGraphics::new(opengl),
-		x: WIDTH / 2.0,
-		y: HEIGHT - 64.0,
-		image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
-		spaceship: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
-		beam: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
-		lutetia: Texture::from_path(Path::new("assets/lutetia.jpg")).unwrap(),
-		keys: HashSet::new(),
-		stars: [[0.0,0.0]; STAR_COUNT],
-		beams: Vec::new(),
-		asteriods: Vec::new(),
-		asteriod_interval: 3.0,
-		total_time: 0.0,
-		last_asteriod: 0.0
+		state: AppState {
+			x: WIDTH / 2.0,
+			y: HEIGHT - 64.0,
+			image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
+			spaceship: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
+			beam: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
+			lutetia: Texture::from_path(Path::new("assets/lutetia.jpg")).unwrap(),
+			keys: HashSet::new(),
+			stars: [[0.0,0.0]; STAR_COUNT],
+			beams: Vec::new(),
+			asteriods: Vec::new(),
+			asteriod_interval: 3.0,
+			total_time: 0.0,
+			last_asteriod: 0.0
+		}
     };
-    for s in app.stars.iter_mut() {
+    for s in app.state.stars.iter_mut() {
     	s[0] = random::<f64>() * WIDTH;
     	s[1] = random::<f64>() * HEIGHT; 
     }
@@ -159,11 +158,11 @@ fn main() {
         	if key == Key::Space {
         		app.fire();
         	}
-        	app.keys.insert(key);
+        	app.state.keys.insert(key);
         }
         
         if let Some(Button::Keyboard(key)) = e.release_args() {
-        	app.keys.remove(&key);
+        	app.state.keys.remove(&key);
         }
 
         if let Some(r) = e.render_args() {
