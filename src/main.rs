@@ -2,12 +2,11 @@ extern crate piston;
 extern crate graphics;
 extern crate glutin_window;
 extern crate opengl_graphics;
-
+extern crate rand;
 
 use glutin_window::GlutinWindow as Window;
 
 use graphics::*;
-use graphics::rectangle::square;
 
 use opengl_graphics::{GlGraphics, OpenGL, Texture};
 
@@ -19,9 +18,10 @@ use std::collections::HashSet;
 
 use std::path::Path;
 
-
 const GREEN: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+const RED: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const SPEED: f64 = 200.0;
+const STAR_COUNT: usize = 100;
 
 pub struct App {
     gl: GlGraphics,
@@ -29,7 +29,9 @@ pub struct App {
     y: f64,
     image : Image,
     texture : Texture,
-    keys: HashSet<Key>
+    keys: HashSet<Key>,
+    starXs: [f64; STAR_COUNT],
+    starYs: [f64; STAR_COUNT]
 }
 
 impl App {
@@ -37,11 +39,20 @@ impl App {
     	let texture = &self.texture;
     	let image = &self.image;
         let (x, y) = (&self.x, &self.y);
+        let draw_state = &DrawState::default();
+        let starXs = &self.starXs;
+        let starYs = &self.starYs;
 
         self.gl.draw(args.viewport(), |c, gl| {
             clear(GREEN, gl);
             let transform = c.transform.trans(*x, *y).trans(-45.0, -64.0);
-            image.draw(texture, &DrawState::default(), transform, gl);
+            image.draw(texture, draw_state, transform, gl);
+            
+		    for i in 0..STAR_COUNT {
+	            let transform = c.transform.trans(starXs[i], starYs[i]);
+		        let square = rectangle::square(0.0, 0.0, 1.0);
+		        rectangle(RED, square, transform, gl);
+		    }
         });
     }
 
@@ -52,6 +63,13 @@ impl App {
     	if self.keys.contains(&Key::Right) {
     		self.x += SPEED * args.dt;
     	}
+	    for i in 0..STAR_COUNT {
+	    	self.starYs[i] += SPEED * args.dt;
+	    	if self.starYs[i] > 768.0 {
+		    	self.starXs[i] = rand::random::<f64>() * 1024.0; 
+	    		self.starYs[i] = 0.0;
+	    	}
+	    }
     }
 }
 
@@ -72,8 +90,14 @@ fn main() {
 		y: 768.0 - 64.0,
 		image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
 		texture: Texture::from_path(Path::new("src/spaceship.png")).unwrap(),
-		keys: HashSet::new()
+		keys: HashSet::new(),
+		starXs: [0.0; STAR_COUNT],
+		starYs: [0.0; STAR_COUNT]
     };
+    for i in 0..STAR_COUNT {
+    	app.starXs[i] = rand::random::<f64>() * 1024.0; 
+    	app.starYs[i] = rand::random::<f64>() * 768.0; 
+    }
 
     let mut events = window.events();
     while let Some(e) = events.next(&mut window) {
