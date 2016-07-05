@@ -32,8 +32,7 @@ const WIDTH: f64 = 1024.0;
 const HEIGHT: f64 = 768.0;
 
 pub struct AppState {
-    x: f64,
-    y: f64,
+	pos: Vec2d,
     image : Image,
     spaceship : Texture,
     beam : Texture,
@@ -75,23 +74,22 @@ impl App {
 	            state.image.draw(&state.lutetia, draw_state, trans, gl);
 		    }
 
-            let transform = c.transform.trans(state.x, state.y).trans(-45.0, -64.0);
+            let transform = c.transform.trans(state.pos[0], state.pos[1]).trans(-45.0, -64.0);
             state.image.draw(&state.spaceship, draw_state, transform, gl);
         });
     }
     
     fn fire(&mut self) {
-    	let beam = [self.state.x, self.state.y];
-    	self.state.beams.push(beam);
+    	self.state.beams.push(self.state.pos);
     }
 
     fn update(&mut self, args: &UpdateArgs) {
     	let state = &mut self.state;
     	if state.keys.contains(&Key::Left) {
-    		state.x -= SPEED * args.dt;
+    		state.pos[0] -= SPEED * args.dt;
     	}
     	if state.keys.contains(&Key::Right) {
-    		state.x += SPEED * args.dt;
+    		state.pos[0] += SPEED * args.dt;
     	}
 
 		for b in state.beams.iter_mut() { b[1] -= SPEED * args.dt; }
@@ -132,8 +130,7 @@ fn main() {
     let mut app = App {
 		gl: GlGraphics::new(opengl),
 		state: AppState {
-			x: WIDTH / 2.0,
-			y: HEIGHT - 64.0,
+			pos: [WIDTH / 2.0, HEIGHT - 64.0],
 			image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
 			spaceship: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
 			beam: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
