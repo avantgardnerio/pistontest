@@ -43,9 +43,10 @@ impl <'a>Sprite<'a> {
         c: Context,
         g: &mut GlGraphics
     ) {
+    	let rect = self.image.rectangle.unwrap();
 		let transform = c.transform
 			.trans(self.position[0], self.position[1])
-			.trans(-45.0, -64.0);
+			.trans(-rect[2]as f64/2.0, -rect[3]as f64/2.0);
         self.image.draw(self.texture, draw_state, transform, g);
     }
 }
@@ -64,8 +65,8 @@ pub struct AppState<'a> {
     spaceship: Sprite<'a>,
     keys: HashSet<Key>,
     stars: [Vec2d; STAR_COUNT],
-    beams: Vec<Vec2d>,
-    asteriods: Vec<Vec2d>,
+    beams: Vec<Sprite<'a>>,
+    asteriods: Vec<Sprite<'a>>,
     asteriod_interval: f64,
     total_time: f64,
     last_asteriod: f64
@@ -133,13 +134,11 @@ impl <'a>App<'a> {
 		    }
 		    
 		    for b in state.beams.iter() {
-	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
-	            state.assets.beam_image.draw(&state.assets.beam_texture, draw_state, trans, gl);
+		    	b.draw(draw_state, c, gl);
 		    }
 
-		    for b in state.asteriods.iter() {
-	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
-	            state.assets.lutetia_image.draw(&state.assets.lutetia_texture, draw_state, trans, gl);
+		    for b in state.asteriods.iter() { 
+		    	b.draw(draw_state, c, gl);
 		    }
 
             state.spaceship.draw(draw_state, c, gl);
@@ -147,7 +146,12 @@ impl <'a>App<'a> {
     }
     
     fn fire(&mut self) {
-    	self.state.beams.push(self.state.spaceship.position);
+		let beam = Sprite {
+			image: &self.state.assets.beam_image,
+			texture: &self.state.assets.beam_texture,
+			position: self.state.spaceship.position
+		};
+    	self.state.beams.push(beam);
     }
 
     fn update(&mut self, args: &UpdateArgs) {
@@ -159,8 +163,8 @@ impl <'a>App<'a> {
     		state.spaceship.position[0] += SPEED * args.dt;
     	}
 
-		for b in state.beams.iter_mut() { b[1] -= SPEED * args.dt; }
-	    state.beams.retain(|b| b[1] > 0.0);
+		for b in state.beams.iter_mut() { b.position[1] -= SPEED * args.dt; }
+	    state.beams.retain(|b| b.position[1] > 0.0);
 
 	    for s in state.stars.iter_mut() {
 	    	s[1] += SPEED * args.dt;
@@ -170,12 +174,18 @@ impl <'a>App<'a> {
 	    	}
 	    }
 	    
-		for b in state.asteriods.iter_mut() { b[1] += SPEED * args.dt; }
-	    state.asteriods.retain(|b| b[1] < HEIGHT);
+		for b in state.asteriods.iter_mut() { 
+			b.position[1] += SPEED * args.dt; 
+		}
+	    state.asteriods.retain(|b| b.position[1] < HEIGHT);
 
 	    if state.last_asteriod < state.total_time - state.asteriod_interval {
 	    	state.last_asteriod = state.total_time;
-	    	let asteriod = [random::<f64>() * WIDTH, 0.0];
+	    	let asteriod = Sprite {
+				image: &self.state.assets.lutetia_image,
+				texture: &self.state.assets.lutetia_texture,
+	    		position: [random::<f64>() * WIDTH, 0.0]
+	    	};
 	    	state.asteriods.push(asteriod);
 	    }
 
