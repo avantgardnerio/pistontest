@@ -32,32 +32,23 @@ const OPENGL: OpenGL = OpenGL::V3_2;
 
 pub struct Sprite<'a> {
 	position: Vec2d,
-	texture: &'a Texture,
-	image: &'a Image
+	drawable: &'a Drawable
 }
 
 impl <'a>Sprite<'a> {
-    pub fn draw(
-        &self,
-        draw_state: &DrawState,
-        c: Context,
-        g: &mut GlGraphics
-    ) {
-    	let rect = self.image.rectangle.unwrap();
+    pub fn draw(&self, draw_state: &DrawState, c: Context, g: &mut GlGraphics) {
+    	let rect = self.drawable.image.rectangle.unwrap();
 		let transform = c.transform
 			.trans(self.position[0], self.position[1])
 			.trans(-rect[2]as f64/2.0, -rect[3]as f64/2.0);
-        self.image.draw(self.texture, draw_state, transform, g);
+        self.drawable.image.draw(&self.drawable.texture, draw_state, transform, g);
     }
 }
 
 pub struct Assets {
-	spaceship_texture: Texture,
-	spaceship_image: Image,
-	beam_texture: Texture,
-	beam_image: Image,
-	lutetia_texture: Texture,
-	lutetia_image: Image
+	spaceship: Drawable,
+	beam: Drawable,
+	lutetia: Drawable
 }
 
 pub struct AppState<'a> {
@@ -77,17 +68,28 @@ pub struct App<'a> {
     state: AppState<'a>
 }
 
+pub struct Drawable {
+	texture: Texture,
+	image: Image
+}
+
+impl Drawable {
+	pub fn new(texture: Texture) -> Self {
+		let width = texture.get_width() as f64;
+		let height = texture.get_height() as f64;
+		Drawable {
+			texture: texture,
+			image: Image::new().rect([0.0, 0.0, width, height]),
+		}
+	}
+}
+
 impl Assets {
 	pub fn new() -> Self {
 		Assets {
-			spaceship_image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
-			spaceship_texture: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
-
-			beam_texture: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
-			beam_image: Image::new().rect([0.0, 0.0, 49.0, 98.0]),
-
-			lutetia_texture: Texture::from_path(Path::new("assets/lutetia.jpg")).unwrap(),
-			lutetia_image: Image::new().rect([0.0, 0.0, 107., 128.0])
+			spaceship: Drawable::new(Texture::from_path(Path::new("assets/spaceship.png")).unwrap()),
+			beam: Drawable::new(Texture::from_path(Path::new("assets/beam.png")).unwrap()),
+			lutetia: Drawable::new(Texture::from_path(Path::new("assets/lutetia.jpg")).unwrap())
 		}
 	}
 }
@@ -99,8 +101,7 @@ impl <'a>App<'a> {
 			state: AppState {
 				assets: assets,
 				spaceship: Sprite {
-					image: &assets.spaceship_image,
-					texture: &assets.spaceship_texture,
+					drawable: &assets.spaceship,
 					position: [WIDTH / 2.0, HEIGHT - 64.0],
 				},
 				keys: HashSet::new(),
@@ -127,28 +128,31 @@ impl <'a>App<'a> {
         self.gl.draw(args.viewport(), |c, gl| {
             clear(GREEN, gl);
             
+            // Stars
 		    for s in state.stars.iter() {
 	            let transform = c.transform.trans(s[0], s[1]);
 		        let square = rectangle::square(0.0, 0.0, 1.0);
 		        rectangle(RED, square, transform, gl);
 		    }
-		    
+
+			// Beams		    
 		    for b in state.beams.iter() {
 		    	b.draw(draw_state, c, gl);
 		    }
 
+			// Asteriods
 		    for b in state.asteriods.iter() { 
 		    	b.draw(draw_state, c, gl);
 		    }
 
+			// Ship
             state.spaceship.draw(draw_state, c, gl);
         });
     }
     
     fn fire(&mut self) {
 		let beam = Sprite {
-			image: &self.state.assets.beam_image,
-			texture: &self.state.assets.beam_texture,
+			drawable: &self.state.assets.beam,
 			position: self.state.spaceship.position
 		};
     	self.state.beams.push(beam);
@@ -156,6 +160,8 @@ impl <'a>App<'a> {
 
     fn update(&mut self, args: &UpdateArgs) {
     	let state = &mut self.state;
+    	
+    	// Move the ship
     	if state.keys.contains(&Key::Left) {
     		state.spaceship.position[0] -= SPEED * args.dt;
     	}
@@ -163,9 +169,13 @@ impl <'a>App<'a> {
     		state.spaceship.position[0] += SPEED * args.dt;
     	}
 
-		for b in state.beams.iter_mut() { b.position[1] -= SPEED * args.dt; }
+		// Move laser beams
+		for b in state.beams.iter_mut() { 
+			b.position[1] -= SPEED * args.dt; 
+		}
 	    state.beams.retain(|b| b.position[1] > 0.0);
 
+		// Move the stars
 	    for s in state.stars.iter_mut() {
 	    	s[1] += SPEED * args.dt;
 	    	if s[1] > HEIGHT {
@@ -173,22 +183,22 @@ impl <'a>App<'a> {
 		    	s[1] = 0.0; 
 	    	}
 	    }
-	    
+
+		// Move the asteriods	    
 		for b in state.asteriods.iter_mut() { 
 			b.position[1] += SPEED * args.dt; 
 		}
 	    state.asteriods.retain(|b| b.position[1] < HEIGHT);
-
 	    if state.last_asteriod < state.total_time - state.asteriod_interval {
 	    	state.last_asteriod = state.total_time;
 	    	let asteriod = Sprite {
-				image: &self.state.assets.lutetia_image,
-				texture: &self.state.assets.lutetia_texture,
+				drawable: &self.state.assets.lutetia,
 	    		position: [random::<f64>() * WIDTH, 0.0]
 	    	};
 	    	state.asteriods.push(asteriod);
 	    }
 
+		// Move on
 	    state.total_time += args.dt;
     }
 }
