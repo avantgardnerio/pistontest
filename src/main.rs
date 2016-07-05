@@ -22,6 +22,9 @@ use rand::random;
 
 use graphics::math::Vec2d;
 
+mod sprite;
+use sprite::{Sprite, Drawable};
+
 const GREEN: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const RED: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const SPEED: f64 = 200.0;
@@ -30,19 +33,6 @@ const WIDTH: f64 = 1024.0;
 const HEIGHT: f64 = 768.0;
 const OPENGL: OpenGL = OpenGL::V3_2;
 
-pub struct Sprite<'a> {
-	position: Vec2d,
-	drawable: &'a Drawable
-}
-
-impl <'a>Sprite<'a> {
-    pub fn draw(&self, draw_state: &DrawState, c: Context, g: &mut GlGraphics) {
-		let transform = c.transform
-			.trans(self.position[0], self.position[1])
-			.trans(-self.drawable.get_width()/2.0, -self.drawable.get_height()/2.0);
-        self.drawable.image.draw(&self.drawable.texture, draw_state, transform, g);
-    }
-}
 
 pub struct Assets {
 	spaceship: Drawable,
@@ -65,30 +55,6 @@ pub struct AppState<'a> {
 pub struct App<'a> {
     gl: GlGraphics,
     state: AppState<'a>
-}
-
-pub struct Drawable {
-	texture: Texture,
-	image: Image
-}
-
-impl Drawable {
-	pub fn new(texture: Texture) -> Self {
-		let width = texture.get_width();
-		let height = texture.get_height();
-		Drawable {
-			texture: texture,
-			image: Image::new().rect([0.0, 0.0, width, height]),
-		}
-	}
-	
-	pub fn get_width(&self) -> f64 {
-		return self.texture.get_width() as f64;
-	}
-	
-	pub fn get_height(&self) -> f64 {
-		return self.texture.get_height() as f64;
-	}
 }
 
 impl Assets {
