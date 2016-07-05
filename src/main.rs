@@ -22,14 +22,13 @@ use rand::random;
 
 use graphics::math::Vec2d;
 
-use std::cell::Cell;
-
 const GREEN: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const RED: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const SPEED: f64 = 200.0;
 const STAR_COUNT: usize = 100;
 const WIDTH: f64 = 1024.0;
 const HEIGHT: f64 = 768.0;
+const OPENGL: OpenGL = OpenGL::V3_2;
 
 pub struct Sprite<'a> {
 	position: Vec2d,
@@ -37,11 +36,19 @@ pub struct Sprite<'a> {
 	image: &'a Image
 }
 
+pub struct Assets {
+	spaceship_image: Image,
+	spaceship_texture: Texture,
+	beam_texture: Texture,
+	beam_image: Image,
+	lutetia_texture: Texture,
+	lutetia_image: Image
+}
+
 pub struct AppState<'a> {
+	assets: &'a Assets,
     image : Image,
     spaceship: Sprite<'a>,
-    beam : Texture,
-    lutetia : Texture,
     keys: HashSet<Key>,
     stars: [Vec2d; STAR_COUNT],
     beams: Vec<Vec2d>,
@@ -56,7 +63,51 @@ pub struct App<'a> {
     state: AppState<'a>
 }
 
+impl Assets {
+	pub fn new() -> Self {
+		Assets {
+			spaceship_image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
+			spaceship_texture: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
+
+			beam_texture: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
+			beam_image: Image::new().rect([0.0, 0.0, 49.0, 98.0]),
+
+			lutetia_texture: Texture::from_path(Path::new("assets/lutetia.jpg")).unwrap(),
+			lutetia_image: Image::new().rect([0.0, 0.0, 107., 128.0])
+		}
+	}
+}
+
 impl <'a>App<'a> {
+    pub fn new(assets: &'a Assets) -> Self {		
+        let mut this = App {
+			gl: GlGraphics::new(OPENGL),
+			state: AppState {
+				assets: assets,
+				image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
+				spaceship: Sprite {
+					image: &assets.spaceship_image,
+					texture: &assets.spaceship_texture,
+					position: [WIDTH / 2.0, HEIGHT - 64.0],
+				},
+				keys: HashSet::new(),
+				stars: [[0.0,0.0]; STAR_COUNT],
+				beams: Vec::new(),
+				asteriods: Vec::new(),
+				asteriod_interval: 3.0,
+				total_time: 0.0,
+				last_asteriod: 0.0
+			}
+		};
+
+		for s in this.state.stars.iter_mut() {
+			s[0] = random::<f64>() * WIDTH;
+			s[1] = random::<f64>() * HEIGHT; 
+		}
+
+        return this;
+    }
+
     fn render(&mut self, args: &RenderArgs) {
         let draw_state = &DrawState::default();
     	let state = &self.state;
@@ -71,12 +122,12 @@ impl <'a>App<'a> {
 		    
 		    for b in state.beams.iter() {
 	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
-	            state.image.draw(&state.beam, draw_state, trans, gl);
+	            state.image.draw(&state.assets.beam_texture, draw_state, trans, gl);
 		    }
 
 		    for b in state.asteriods.iter() {
 	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
-	            state.image.draw(&state.lutetia, draw_state, trans, gl);
+	            state.image.draw(&state.assets.lutetia_texture, draw_state, trans, gl);
 		    }
 
             let transform = c.transform.trans(state.spaceship.position[0], state.spaceship.position[1]).trans(-45.0, -64.0);
@@ -122,44 +173,18 @@ impl <'a>App<'a> {
 }
 
 fn main() {
-    let opengl = OpenGL::V3_2;
     let mut window: Window = WindowSettings::new(
-        "spinning-square",
+        "Asteriods!",
         [1024, 768]
     )
-    .opengl(opengl)
+    .opengl(OPENGL)
     .exit_on_esc(true)
     .build()
     .unwrap();
     
-    let spaceship_texture = Texture::from_path(Path::new("assets/spaceship.png")).unwrap();
-    let spaceship_image = Image::new().rect([0.0, 0.0, 90.0, 128.0]);
+    let assets = Assets::new();
+    let mut app: App = App::new(&assets);
     
-    let mut app = App {
-		gl: GlGraphics::new(opengl),
-		state: AppState {
-			image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
-			spaceship: Sprite {
-				image: &spaceship_image,
-				texture: &spaceship_texture,
-				position: [WIDTH / 2.0, HEIGHT - 64.0],
-			},
-			beam: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
-			lutetia: Texture::from_path(Path::new("assets/lutetia.jpg")).unwrap(),
-			keys: HashSet::new(),
-			stars: [[0.0,0.0]; STAR_COUNT],
-			beams: Vec::new(),
-			asteriods: Vec::new(),
-			asteriod_interval: 3.0,
-			total_time: 0.0,
-			last_asteriod: 0.0
-		}
-    };
-    for s in app.state.stars.iter_mut() {
-    	s[0] = random::<f64>() * WIDTH;
-    	s[1] = random::<f64>() * HEIGHT; 
-    }
-
     let mut events = window.events();
     while let Some(e) = events.next(&mut window) {
         if let Some(Button::Keyboard(key)) = e.press_args() {
