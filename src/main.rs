@@ -36,9 +36,23 @@ pub struct Sprite<'a> {
 	image: &'a Image
 }
 
+impl <'a>Sprite<'a> {
+    pub fn draw(
+        &self,
+        draw_state: &DrawState,
+        c: Context,
+        g: &mut GlGraphics
+    ) {
+		let transform = c.transform
+			.trans(self.position[0], self.position[1])
+			.trans(-45.0, -64.0);
+        self.image.draw(self.texture, draw_state, transform, g);
+    }
+}
+
 pub struct Assets {
-	spaceship_image: Image,
 	spaceship_texture: Texture,
+	spaceship_image: Image,
 	beam_texture: Texture,
 	beam_image: Image,
 	lutetia_texture: Texture,
@@ -47,7 +61,6 @@ pub struct Assets {
 
 pub struct AppState<'a> {
 	assets: &'a Assets,
-    image : Image,
     spaceship: Sprite<'a>,
     keys: HashSet<Key>,
     stars: [Vec2d; STAR_COUNT],
@@ -84,7 +97,6 @@ impl <'a>App<'a> {
 			gl: GlGraphics::new(OPENGL),
 			state: AppState {
 				assets: assets,
-				image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
 				spaceship: Sprite {
 					image: &assets.spaceship_image,
 					texture: &assets.spaceship_texture,
@@ -122,16 +134,15 @@ impl <'a>App<'a> {
 		    
 		    for b in state.beams.iter() {
 	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
-	            state.image.draw(&state.assets.beam_texture, draw_state, trans, gl);
+	            state.assets.beam_image.draw(&state.assets.beam_texture, draw_state, trans, gl);
 		    }
 
 		    for b in state.asteriods.iter() {
 	            let trans = c.transform.trans(b[0], b[1]).trans(-45.0, -64.0);
-	            state.image.draw(&state.assets.lutetia_texture, draw_state, trans, gl);
+	            state.assets.lutetia_image.draw(&state.assets.lutetia_texture, draw_state, trans, gl);
 		    }
 
-            let transform = c.transform.trans(state.spaceship.position[0], state.spaceship.position[1]).trans(-45.0, -64.0);
-            state.spaceship.image.draw(state.spaceship.texture, draw_state, transform, gl);
+            state.spaceship.draw(draw_state, c, gl);
         });
     }
     
