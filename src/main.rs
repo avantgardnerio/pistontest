@@ -37,10 +37,9 @@ pub struct Sprite<'a> {
 
 impl <'a>Sprite<'a> {
     pub fn draw(&self, draw_state: &DrawState, c: Context, g: &mut GlGraphics) {
-    	let rect = self.drawable.image.rectangle.unwrap();
 		let transform = c.transform
 			.trans(self.position[0], self.position[1])
-			.trans(-rect[2]as f64/2.0, -rect[3]as f64/2.0);
+			.trans(-self.drawable.get_width()/2.0, -self.drawable.get_height()/2.0);
         self.drawable.image.draw(&self.drawable.texture, draw_state, transform, g);
     }
 }
@@ -75,12 +74,20 @@ pub struct Drawable {
 
 impl Drawable {
 	pub fn new(texture: Texture) -> Self {
-		let width = texture.get_width() as f64;
-		let height = texture.get_height() as f64;
+		let width = texture.get_width();
+		let height = texture.get_height();
 		Drawable {
 			texture: texture,
 			image: Image::new().rect([0.0, 0.0, width, height]),
 		}
+	}
+	
+	pub fn get_width(&self) -> f64 {
+		return self.texture.get_width() as f64;
+	}
+	
+	pub fn get_height(&self) -> f64 {
+		return self.texture.get_height() as f64;
 	}
 }
 
@@ -102,7 +109,7 @@ impl <'a>App<'a> {
 				assets: assets,
 				spaceship: Sprite {
 					drawable: &assets.spaceship,
-					position: [WIDTH / 2.0, HEIGHT - 64.0],
+					position: [WIDTH / 2.0, HEIGHT - assets.spaceship.get_width()/2.0],
 				},
 				keys: HashSet::new(),
 				stars: [[0.0,0.0]; STAR_COUNT],
