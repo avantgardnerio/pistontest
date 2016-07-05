@@ -31,10 +31,15 @@ const STAR_COUNT: usize = 100;
 const WIDTH: f64 = 1024.0;
 const HEIGHT: f64 = 768.0;
 
-pub struct AppState {
-	pos: Vec2d,
+pub struct Sprite<'a> {
+	position: Vec2d,
+	texture: &'a Texture,
+	image: &'a Image
+}
+
+pub struct AppState<'a> {
     image : Image,
-    spaceship : Texture,
+    spaceship: Sprite<'a>,
     beam : Texture,
     lutetia : Texture,
     keys: HashSet<Key>,
@@ -46,12 +51,12 @@ pub struct AppState {
     last_asteriod: f64
 }
 
-pub struct App {
+pub struct App<'a> {
     gl: GlGraphics,
-    state: AppState
+    state: AppState<'a>
 }
 
-impl App {
+impl <'a>App<'a> {
     fn render(&mut self, args: &RenderArgs) {
         let draw_state = &DrawState::default();
     	let state = &self.state;
@@ -74,22 +79,22 @@ impl App {
 	            state.image.draw(&state.lutetia, draw_state, trans, gl);
 		    }
 
-            let transform = c.transform.trans(state.pos[0], state.pos[1]).trans(-45.0, -64.0);
-            state.image.draw(&state.spaceship, draw_state, transform, gl);
+            let transform = c.transform.trans(state.spaceship.position[0], state.spaceship.position[1]).trans(-45.0, -64.0);
+            state.spaceship.image.draw(state.spaceship.texture, draw_state, transform, gl);
         });
     }
     
     fn fire(&mut self) {
-    	self.state.beams.push(self.state.pos);
+    	self.state.beams.push(self.state.spaceship.position);
     }
 
     fn update(&mut self, args: &UpdateArgs) {
     	let state = &mut self.state;
     	if state.keys.contains(&Key::Left) {
-    		state.pos[0] -= SPEED * args.dt;
+    		state.spaceship.position[0] -= SPEED * args.dt;
     	}
     	if state.keys.contains(&Key::Right) {
-    		state.pos[0] += SPEED * args.dt;
+    		state.spaceship.position[0] += SPEED * args.dt;
     	}
 
 		for b in state.beams.iter_mut() { b[1] -= SPEED * args.dt; }
@@ -127,12 +132,18 @@ fn main() {
     .build()
     .unwrap();
     
+    let spaceship_texture = Texture::from_path(Path::new("assets/spaceship.png")).unwrap();
+    let spaceship_image = Image::new().rect([0.0, 0.0, 90.0, 128.0]);
+    
     let mut app = App {
 		gl: GlGraphics::new(opengl),
 		state: AppState {
-			pos: [WIDTH / 2.0, HEIGHT - 64.0],
 			image: Image::new().rect([0.0, 0.0, 90.0, 128.0]),
-			spaceship: Texture::from_path(Path::new("assets/spaceship.png")).unwrap(),
+			spaceship: Sprite {
+				image: &spaceship_image,
+				texture: &spaceship_texture,
+				position: [WIDTH / 2.0, HEIGHT - 64.0],
+			},
 			beam: Texture::from_path(Path::new("assets/beam.png")).unwrap(),
 			lutetia: Texture::from_path(Path::new("assets/lutetia.jpg")).unwrap(),
 			keys: HashSet::new(),
